@@ -17,17 +17,35 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-
-  web:
-    build:
+  migrate:
+    build: &backend_build
       context: ./backend
       dockerfile: Dockerfile
-    container_name: invoice_api
-    ports:
-      - "8000:8000"
+    working_dir: /migrations
+    volumes:
+      - ./alembic.ini:/migrations/alembic.ini:ro
+      - ./alembic:/migrations/alembic:ro
+      - ./backend:/migrations/backend:ro
+    environment: &database_env
+      DATABASE_URL: ${DOCKER_DATABASE_URL:?set DOCKER_DATABASE_URL}
+      DOCKER_DATABASE_URL: ${DOCKER_DATABASE_URL:?set DOCKER_DATABASE_URL}
+      TEST_DATABASE_URL: ${TEST_DATABASE_URL:?set TEST_DATABASE_URL}
+    entrypoint: ['alembic']
+    command: ['upgrade', 'head']
     depends_on:
       db:
         condition: service_healthy
+
+
+  web:
+    build: *backend_build
+    container_name: invoice_api
+    ports:
+      - "8000:8000"
+    environment: *database_env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 volumes:
   pgdata:
 
