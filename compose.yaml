@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_USER: invoice_app
+      POSTGRES_DB: invoice_db
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    shm_size: 256mb
+    healthcheck:
+      test: ['CMD-SHELL', "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  web:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: invoice_api
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  pgdata:
+
+
+
+
+
